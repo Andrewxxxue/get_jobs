@@ -36,9 +36,10 @@ public class Boss {
     static Integer page = 1;
     static String homeUrl = "https://www.zhipin.com";
     static String baseUrl = "https://www.zhipin.com/web/geek/job?";
+
     static Set<String> blackCompanies;
     static Set<String> blackRecruiters;
-    static Set<String> blackJobs;
+    static Set<String> whiteJobs;//白名单岗位，只有包含这里面字符的岗位才会投递
     static List<Job> resultList = new ArrayList<>();
     static List<String> deadStatus = List.of("半年前活跃");
     static String dataPath = "./src/main/java/boss/data.json";
@@ -62,7 +63,7 @@ public class Boss {
         String message = String.format("\nBoss投递完成，共发起%d个聊天，用时%s", resultList.size(), formatDuration(startDate, new Date()));
         log.info(message);
         sendMessageByTime(message);
-        saveData(dataPath);
+//      saveData(dataPath);//自动添加黑名单公司
         resultList.clear();
         CHROME_DRIVER.close();
         CHROME_DRIVER.quit();
@@ -125,7 +126,7 @@ public class Boss {
             Map<String, Set<String>> data = new HashMap<>();
             data.put("blackCompanies", blackCompanies);
             data.put("blackRecruiters", blackRecruiters);
-            data.put("blackJobs", blackJobs);
+            data.put("blackJobs", whiteJobs);
             String json = customJsonFormat(data);
             Files.write(Paths.get(path), json.getBytes());
         } catch (IOException e) {
@@ -224,7 +225,7 @@ public class Boss {
         JSONObject jsonObject = new JSONObject(json);
         blackCompanies = jsonObject.getJSONArray("blackCompanies").toList().stream().map(Object::toString).collect(Collectors.toSet());
         blackRecruiters = jsonObject.getJSONArray("blackRecruiters").toList().stream().map(Object::toString).collect(Collectors.toSet());
-        blackJobs = jsonObject.getJSONArray("blackJobs").toList().stream().map(Object::toString).collect(Collectors.toSet());
+        whiteJobs = jsonObject.getJSONArray("blackJobs").toList().stream().map(Object::toString).collect(Collectors.toSet());
     }
 
     @SneakyThrows
@@ -249,7 +250,7 @@ public class Boss {
                 continue;
             }
             String jobName = jobCard.findElement(By.cssSelector("div.job-title span.job-name")).getText();
-            if (blackJobs.stream().anyMatch(jobName::contains) || !isTargetJob(keyword, jobName)) {
+            if (whiteJobs.stream().noneMatch(jobName::contains)) {
                 // 排除黑名单岗位
                 continue;
             }
